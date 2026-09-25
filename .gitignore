@@ -1,0 +1,33 @@
+# Maven
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**/target/
+!**/src/test/**/target/
+
+# IDEs
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+.factorypath
+.sts4-cache/
+nbproject/
+nbbuild/
+nbdist/
+.nb-gradle/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+
+# Secretos: nunca se versionan (sí los ejemplos)
+.env
+*.env
+!*.env.example
+
+# Logs
+*.log
