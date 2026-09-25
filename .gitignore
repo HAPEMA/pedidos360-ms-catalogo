@@ -28,6 +28,10 @@ Thumbs.db
 .env
 *.env
 !*.env.example
+.env.local
+
+# Llaves SSH / certificados
+*.pem
 
 # Logs
 *.log

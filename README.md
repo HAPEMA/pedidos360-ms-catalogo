@@ -96,33 +96,90 @@ Error de validación:
 | Variable            | Obligatoria | Ejemplo / valor por defecto | Uso |
 |---------------------|-------------|-----------------------------|-----|
 | `PORT`              | no  | `8081` | Puerto HTTP. |
-| `DB_URL`            | sí  | `jdbc:postgresql://<host-rds>:5432/catalogo` | JDBC de RDS. |
-| `DB_USER`           | sí  | `catalogo_app` | Usuario de la BD. |
+| `DB_URL`            | sí  | `jdbc:postgresql://pedidos360-db.cdsrcop1stid.us-east-1.rds.amazonaws.com:5432/catalogo_db` | JDBC de RDS. |
+| `DB_USER`           | sí  | `postgres` | Usuario de la BD. |
 | `DB_PASS`           | sí  | — | Clave de la BD. |
 | `NINJA_API_KEY`     | sí  | — | API key de API Ninjas (secreto). |
 | `NINJA_BASE_URL`    | no  | `https://api.api-ninjas.com/v1` | URL base de API Ninjas. |
-| `COGNITO_POOL_ID`   | sí  | `us-east-1_XXXXXXXXX` | User Pool; forma el issuer `https://cognito-idp.us-east-1.amazonaws.com/<pool>`. |
-| `COGNITO_CLIENT_ID` | sí  | — | App client del front; se exige en el claim `client_id`. |
+| `COGNITO_POOL_ID`   | sí  | `us-east-1_yJTuOqej9` | User Pool; forma el issuer `https://cognito-idp.us-east-1.amazonaws.com/<pool>`. |
+| `COGNITO_CLIENT_ID` | sí  | `55g18pciai9kmgp5818ta6ur28` | App client del front; se exige en el claim `client_id`. |
 | `FRONT_ORIGIN`      | no  | `http://localhost:4200` | Origen exacto permitido por CORS. |
 
 Ver [`deploy/ms-catalogo.env.example`](deploy/ms-catalogo.env.example). Ningún secreto se versiona (`.env` y `*.env` están en `.gitignore`).
 
-## Correr en local
+## Correr en local (PowerShell)
 
-Requisitos: JDK 17 o superior. El perfil `local` usa H2 en memoria y valores por defecto para Cognito, así que arranca sin variables:
+Requisitos: JDK 17 o superior (no hace falta Maven instalado, se usa el wrapper).
+El perfil `local` usa **H2 en memoria** (RDS no es accesible desde el PC) y trae por defecto el User Pool
+(`us-east-1_yJTuOqej9`) y el App Client (`55g18pciai9kmgp5818ta6ur28`) reales, así que valida tokens reales de Cognito.
 
-```bash
-# Con una API key real para que /api/animales/buscar funcione
-export NINJA_API_KEY=tu-api-key
-SPRING_PROFILES_ACTIVE=local ./mvnw spring-boot:run
+```powershell
+$env:NINJA_API_KEY="tu-api-key"   # secreto: solo en la sesión, nunca en archivos
+.\mvnw.cmd spring-boot:run "-Dspring-boot.run.profiles=local"
 ```
 
-```bash
-curl http://localhost:8081/actuator/health          # 200 {"status":"UP",...}
-curl -i http://localhost:8081/api/especies          # 401 (falta token)
+```powershell
+curl.exe http://localhost:8081/actuator/health        # 200 {"status":"UP"}
+curl.exe -i http://localhost:8081/api/especies         # 401 (falta token)
 ```
 
-Para llamar a `/api/**` hace falta un access token real de Cognito (obtenido por el front). En local se puede apuntar a un pool real con `COGNITO_POOL_ID` y `COGNITO_CLIENT_ID`.
+Para llamar a `/api/**` hace falta un access token de Cognito (lo obtiene el front con `ng serve`).
+
+## Despliegue en EC2
+
+Valores de la infraestructura:
+
+| Recurso | Valor |
+|---------|-------|
+| Región | `us-east-1` |
+| EC2 (Elastic IP) | `52.71.179.5` · ms-catalogo `8081` · ms-pedidos `8082` |
+| Bucket de artefactos | `s3://pedidos360-artefactos-hapema` |
+| RDS | `pedidos360-db.cdsrcop1stid.us-east-1.rds.amazonaws.com:5432` · base `catalogo_db` · usuario `postgres` |
+| Cognito User Pool / App Client | `us-east-1_yJTuOqej9` / `55g18pciai9kmgp5818ta6ur28` |
+
+**1. Compilar y subir el jar a S3** (desde tu PC, PowerShell, con AWS CLI configurado):
+
+```powershell
+.\mvnw.cmd clean package
+aws s3 cp target\ms-catalogo.jar s3://pedidos360-artefactos-hapema/ms-catalogo.jar
+```
+
+**2. En el EC2** (Amazon Linux 2023, conectado por SSH o Session Manager; el rol de la instancia debe poder leer el bucket):
+
+```bash
+# Java y directorios (solo la primera vez)
+sudo dnf install -y java-17-amazon-corretto-headless
+sudo mkdir -p /opt/pedidos360 /etc/pedidos360
+
+# Descargar el jar
+sudo aws s3 cp s3://pedidos360-artefactos-hapema/ms-catalogo.jar /opt/pedidos360/ms-catalogo.jar
+sudo chown ec2-user:ec2-user /opt/pedidos360/ms-catalogo.jar
+
+# Variables de entorno: copiar la plantilla y reemplazar los REEMPLAZAR_EN_EC2
+# (deploy/ del repo clonado o copiado al EC2)
+sudo cp deploy/ms-catalogo.env.example /etc/pedidos360/ms-catalogo.env
+sudo vi /etc/pedidos360/ms-catalogo.env      # DB_PASS y NINJA_API_KEY
+sudo chmod 600 /etc/pedidos360/ms-catalogo.env
+sudo grep -c REEMPLAZAR_EN_EC2 /etc/pedidos360/ms-catalogo.env   # debe imprimir 0
+
+# Servicio systemd
+sudo cp deploy/ms-catalogo.service /etc/systemd/system/ms-catalogo.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now ms-catalogo
+sudo systemctl status ms-catalogo
+sudo journalctl -u ms-catalogo -f
+```
+
+**3. Probar** (desde tu PC; el security group debe permitir el puerto 8081):
+
+```powershell
+curl.exe -i http://52.71.179.5:8081/actuator/health    # 200 {"status":"UP"}
+curl.exe -i http://52.71.179.5:8081/api/especies        # 401 (sin token)
+```
+
+**Actualizar una versión**: repetir el paso 1, volver a descargar el jar en el EC2 y `sudo systemctl restart ms-catalogo`.
+
+Con `ddl-auto=update`, Hibernate crea las tablas `especie` y `especie_ubicacion` en el primer arranque.
 
 ## Tests
 
@@ -138,40 +195,6 @@ Ningún test sale a internet: API Ninjas se simula con `MockRestServiceServer` o
 | `NinjaClientTest` | Mapeo de campos, campos faltantes, lista vacía, header `X-Api-Key`, error de API Ninjas → `NinjaNoDisponibleException` sin filtrar la key. |
 | `SeguridadConfigTest` | Validadores del token (issuer, expiración, `token_use`, `client_id`) y conversión scope → `SCOPE_`, `cognito:groups` → `ROLE_`, principal = `username`. |
 | `ControladoresSeguridadTest` | Matriz de seguridad y respuestas HTTP de todos los endpoints (401, 403, 200, 201, 400, 404, 409, 422, 502, CORS). |
-
-## Construir y desplegar en EC2
-
-1. Construir el jar ejecutable:
-   ```bash
-   ./mvnw clean package
-   # target/ms-catalogo.jar
-   ```
-2. En la instancia (Amazon Linux 2023):
-   ```bash
-   sudo dnf install -y java-17-amazon-corretto-headless
-   sudo mkdir -p /opt/pedidos360 /etc/pedidos360
-   ```
-3. Copiar el jar y la configuración:
-   ```bash
-   scp target/ms-catalogo.jar ec2-user@<ec2>:/tmp/
-   scp deploy/ms-catalogo.service ec2-user@<ec2>:/tmp/
-   # en la instancia
-   sudo mv /tmp/ms-catalogo.jar /opt/pedidos360/ms-catalogo.jar
-   sudo mv /tmp/ms-catalogo.service /etc/systemd/system/ms-catalogo.service
-   sudo vi /etc/pedidos360/ms-catalogo.env        # a partir de deploy/ms-catalogo.env.example
-   sudo chmod 600 /etc/pedidos360/ms-catalogo.env  # systemd lo lee como root
-   ```
-4. Iniciar y habilitar el servicio:
-   ```bash
-   sudo systemctl daemon-reload
-   sudo systemctl enable --now ms-catalogo
-   sudo systemctl status ms-catalogo
-   journalctl -u ms-catalogo -f
-   curl http://localhost:8081/actuator/health
-   ```
-5. Actualizar una versión: reemplazar el jar y `sudo systemctl restart ms-catalogo`.
-
-`ddl-auto=update` crea las tablas `especie` y `especie_ubicacion` en el primer arranque.
 
 ## Seguridad
 
