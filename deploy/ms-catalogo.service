@@ -1,0 +1,18 @@
+# /etc/systemd/system/ms-catalogo.service
+[Unit]
+Description=Pedidos360 - ms-catalogo (Spring Boot)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=ec2-user
+# Variables de entorno (secretos incluidos) fuera del repo; archivo con permisos 600
+EnvironmentFile=/etc/pedidos360/ms-catalogo.env
+ExecStart=/usr/bin/java -Xmx384m -jar /opt/pedidos360/ms-catalogo.jar
+SuccessExitStatus=143
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
