@@ -241,7 +241,7 @@ El servicio es un **OAuth2 Resource Server**. Aunque API Gateway ya valida el to
 - **Compilar / probar:** `./mvnw -q -DskipTests package` y `./mvnw test` (en Windows `.\mvnw.cmd`).
 - **Mensajería:** `spring-boot-starter-amqp`; conexión por `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASS`
   (defaults solo para local) y nombres en `src/main/resources/application.yml` (`app.rabbit.*`). `/actuator/health` no depende del broker.
-- Declara la cola `catalogo.stock` (binding `pedido.creado`) pero **no tiene consumidor** todavía; ver la advertencia en [`docs/RABBITMQ.md`](../docs/RABBITMQ.md).
+- No declara colas (solo los exchanges compartidos); las colas de negocio son de ms-notificaciones y ms-documentos.
 - **Issuer:** además de `COGNITO_POOL_ID`, se acepta `COGNITO_ISSUER_URI` (tiene prioridad; sin barra final).
 - **Docker:** `docker build -t ms-catalogo .` (multi-stage, JDK 17 → JRE 17). Clúster RabbitMQ y overlay de apps en la raíz:
   [`docs/RABBITMQ.md`](../docs/RABBITMQ.md).

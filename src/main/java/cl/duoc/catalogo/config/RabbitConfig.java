@@ -1,10 +1,6 @@
 package cl.duoc.catalogo.config;
 
-import org.springframework.amqp.core.Binding;
-import org.springframework.amqp.core.BindingBuilder;
 import org.springframework.amqp.core.DirectExchange;
-import org.springframework.amqp.core.Queue;
-import org.springframework.amqp.core.QueueBuilder;
 import org.springframework.amqp.core.TopicExchange;
 import org.springframework.amqp.support.converter.JacksonJsonMessageConverter;
 import org.springframework.amqp.support.converter.MessageConverter;
@@ -41,42 +37,11 @@ public class RabbitConfig {
         return new DirectExchange(props.exchanges().dlx(), true, false);
     }
 
-    // --- Stock: descuento asíncrono de stock al crear un pedido ---
-
-    @Bean
-    public Queue stockQueue() {
-        return QueueBuilder.durable(props.queues().stock())
-                .withArgument("x-dead-letter-exchange", props.exchanges().dlx())
-                .withArgument("x-dead-letter-routing-key", dlq(props.queues().stock()))
-                .build();
-    }
-
-    /** pedido.creado → cola de este servicio. */
-    @Bean
-    public Binding stockBinding() {
-        return BindingBuilder.bind(stockQueue()).to(pedidosExchange()).with(props.routingKeys().pedidoCreado());
-    }
-
-    @Bean
-    public Queue stockDeadLetterQueue() {
-        return QueueBuilder.durable(dlq(props.queues().stock())).build();
-    }
-
-    /** Mensajes muertos de la cola → su DLQ, por routing key {cola}.dlq. */
-    @Bean
-    public Binding stockDeadLetterBinding() {
-        return BindingBuilder.bind(stockDeadLetterQueue()).to(deadLetterExchange()).with(dlq(props.queues().stock()));
-    }
-
     // --- Serialización ---
 
     /** JSON (Jackson 3) en lugar de serialización Java; Spring Boot lo aplica a RabbitTemplate y listeners. */
     @Bean
     public MessageConverter jsonMessageConverter() {
         return new JacksonJsonMessageConverter();
-    }
-
-    private String dlq(String cola) {
-        return cola + props.dlqSuffix();
     }
 }

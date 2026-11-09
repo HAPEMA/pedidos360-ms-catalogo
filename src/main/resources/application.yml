@@ -17,12 +17,7 @@ app:
     exchanges:
       pedidos: adopciones.pedidos   # eventos del ciclo de vida del pedido (topic)
       dlx: adopciones.dlx           # dead-letter exchange compartido (direct)
-    queues:
-      stock: catalogo.stock   # TODO: confirmar caso de uso (descontar stock al crear pedido)
-    # La DLQ de cada cola se llama {cola}{dlq-suffix}; su routing key es el mismo nombre.
-    dlq-suffix: .dlq
-    routing-keys:
-      pedido-creado: pedido.creado
+    # ms-catalogo no declara colas: solo los exchanges compartidos (las colas son de notificaciones y documentos).
 
 # El broker no debe afectar al /actuator/health existente (health check del balanceador):
 # sin RabbitMQ el servicio sigue sirviendo HTTP, solo se pausa la mensajería.
