@@ -234,3 +234,15 @@ El servicio es un **OAuth2 Resource Server**. Aunque API Gateway ya valida el to
 - **Fichas no se actualizan**: la copia de la ficha se toma al publicar; si API Ninjas cambia, el catálogo no se entera.
 - **El stock no se descuenta desde ms-pedidos**: no hay comunicación entre microservicios; el stock es informativo.
 - **Endpoint de metadatos OAuth** (`/.well-known/oauth-protected-resource`, RFC 9728): Spring Security 7 lo publica automáticamente fuera de las reglas de autorización; solo expone la URL del recurso y los métodos aceptados, sin datos sensibles.
+
+<!-- rabbitmq-docker -->
+## RabbitMQ, issuer de Cognito y Docker (añadido)
+
+- **Compilar / probar:** `./mvnw -q -DskipTests package` y `./mvnw test` (en Windows `.\mvnw.cmd`).
+- **Mensajería:** `spring-boot-starter-amqp`; conexión por `RABBITMQ_HOST`, `RABBITMQ_PORT`, `RABBITMQ_USER`, `RABBITMQ_PASS`
+  (defaults solo para local) y nombres en `src/main/resources/application.yml` (`app.rabbit.*`). `/actuator/health` no depende del broker.
+- Declara la cola `catalogo.stock` (binding `pedido.creado`) pero **no tiene consumidor** todavía; ver la advertencia en [`docs/RABBITMQ.md`](../docs/RABBITMQ.md).
+- **Issuer:** además de `COGNITO_POOL_ID`, se acepta `COGNITO_ISSUER_URI` (tiene prioridad; sin barra final).
+- **Docker:** `docker build -t ms-catalogo .` (multi-stage, JDK 17 → JRE 17). Clúster RabbitMQ y overlay de apps en la raíz:
+  [`docs/RABBITMQ.md`](../docs/RABBITMQ.md).
+- **Topología, flujos y manejo de ACK/NACK/DLQ:** [`docs/RABBITMQ.md`](../docs/RABBITMQ.md).
