@@ -96,13 +96,13 @@ Error de validación:
 | Variable            | Obligatoria | Ejemplo / valor por defecto | Uso |
 |---------------------|-------------|-----------------------------|-----|
 | `PORT`              | no  | `8081` | Puerto HTTP. |
-| `DB_URL`            | sí  | `jdbc:postgresql://pedidos360-db.cdsrcop1stid.us-east-1.rds.amazonaws.com:5432/catalogo_db` | JDBC de RDS. |
+| `DB_URL`            | sí  | `jdbc:postgresql://<RDS_HOST>:5432/catalogo_db` | JDBC de RDS. |
 | `DB_USER`           | sí  | `postgres` | Usuario de la BD. |
 | `DB_PASS`           | sí  | — | Clave de la BD. |
 | `NINJA_API_KEY`     | sí  | — | API key de API Ninjas (secreto). |
 | `NINJA_BASE_URL`    | no  | `https://api.api-ninjas.com/v1` | URL base de API Ninjas. |
-| `COGNITO_POOL_ID`   | sí  | `us-east-1_yJTuOqej9` | User Pool; forma el issuer `https://cognito-idp.us-east-1.amazonaws.com/<pool>`. |
-| `COGNITO_CLIENT_ID` | sí  | `55g18pciai9kmgp5818ta6ur28` | App client del front; se exige en el claim `client_id`. |
+| `COGNITO_POOL_ID`   | sí  | `<USER_POOL_ID>` | User Pool; forma el issuer `https://cognito-idp.us-east-1.amazonaws.com/<pool>`. |
+| `COGNITO_CLIENT_ID` | sí  | `<APP_CLIENT_ID>` | App client del front; se exige en el claim `client_id`. |
 | `FRONT_ORIGIN`      | no  | `http://localhost:4200` | Origen exacto permitido por CORS. |
 
 Ver [`deploy/ms-catalogo.env.example`](deploy/ms-catalogo.env.example). Ningún secreto se versiona (`.env` y `*.env` están en `.gitignore`).
@@ -111,7 +111,7 @@ Ver [`deploy/ms-catalogo.env.example`](deploy/ms-catalogo.env.example). Ningún 
 
 Requisitos: JDK 17 o superior (no hace falta Maven instalado, se usa el wrapper).
 El perfil `local` usa **H2 en memoria** (RDS no es accesible desde el PC) y trae por defecto el User Pool
-(`us-east-1_yJTuOqej9`) y el App Client (`55g18pciai9kmgp5818ta6ur28`) reales, así que valida tokens reales de Cognito.
+(`<USER_POOL_ID>`) y el App Client (`<APP_CLIENT_ID>`) reales, así que valida tokens reales de Cognito.
 
 ```powershell
 $env:NINJA_API_KEY="tu-api-key"   # secreto: solo en la sesión, nunca en archivos
@@ -134,8 +134,8 @@ Valores de la infraestructura:
 | Región | `us-east-1` |
 | EC2 (Elastic IP) | `52.71.179.5` · ms-catalogo `8081` · ms-pedidos `8082` |
 | Bucket de artefactos | `s3://pedidos360-artefactos-hapema` |
-| RDS | `pedidos360-db.cdsrcop1stid.us-east-1.rds.amazonaws.com:5432` · base `catalogo_db` · usuario `postgres` |
-| Cognito User Pool / App Client | `us-east-1_yJTuOqej9` / `55g18pciai9kmgp5818ta6ur28` |
+| RDS | `<RDS_HOST>:5432` · base `catalogo_db` · usuario `postgres` |
+| Cognito User Pool / App Client | `<USER_POOL_ID>` / `<APP_CLIENT_ID>` |
 
 **1. Compilar y subir el jar a S3** (desde tu PC, PowerShell, con AWS CLI configurado):
 
